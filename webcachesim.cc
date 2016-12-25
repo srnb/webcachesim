@@ -2,7 +2,8 @@
 #include <regex>
 #include "policies/lru_variants.cc"
 #include "policies/gd_variants.cc"
-
+#include <vector>
+#include <chrono>
 int main (int argc, char* argv[])
 {
 
@@ -42,7 +43,7 @@ int main (int argc, char* argv[])
     paramSummary += opmatch[2];
   }
 
-  ifstream infile;
+  ifstream infile,file;
   long long reqs = 0, bytes = 0;
   long long t, id, size;
   bool logStatistics=false;
@@ -50,7 +51,20 @@ int main (int argc, char* argv[])
   cerr << "running..." << endl;
 
   infile.open(path);
-  while (infile >> t >> id >> size)
+  std::string filepath(path);
+ std::string line;
+ std::vector<std::string> collection;
+ while(std::getline(infile,line)){
+  collection.push_back(filepath.substr(0,filepath.find_last_of("\\/"))+'/'+line);
+}
+infile.close();
+
+ vector<string>::iterator ite;
+std::chrono::duration<double> diff;
+auto start=std::chrono::high_resolution_clock::now();
+ for(ite=collection.begin() ; ite != collection.end() ;ite++){
+  file.open(*ite);
+  while (file >> t >> id >> size)
     {
       // start statistics after warm up
       if (!logStatistics && t > warmUp)
@@ -70,15 +84,20 @@ int main (int argc, char* argv[])
       // request
       webcache->request(id,size);
     }
+auto end=std::chrono::high_resolution_clock::now();
+diff = end-start;
 
-  infile.close();
+  file.close();
+}
   cout << "done." << endl << "-------" << endl
        << "cache policy: " << cacheType << endl
        << "size (log2): " << sizeExp << endl
        << "additional parameters: " << paramSummary << endl
        << "requests processed: " << reqs << endl
        << "object hit ratio: " << double(webcache->getHits())/reqs << endl
-       << "byte hit ratio: " << double(webcache->getBytehits())/bytes << endl;
+       << "byte hit ratio: " << double(webcache->getBytehits())/bytes << endl
+       << "Throughtput: "<<double(diff.count()/reqs)<<"s\n";
+
 
   return 0;
 }
