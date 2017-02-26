@@ -2,7 +2,7 @@
 #include <regex>
 #include "policies/lru_variants.cc"
 #include "policies/gd_variants.cc"
-
+#include <chrono>
 int main (int argc, char* argv[])
 {
 
@@ -25,6 +25,7 @@ int main (int argc, char* argv[])
 
   // configure cache size
   const double sizeExp = atof(argv[4]);
+  cout<<sizeExp;
   const long long cache_size  = pow(2.0,sizeExp);
   webcache->setSize(cache_size);
 
@@ -50,6 +51,8 @@ int main (int argc, char* argv[])
   cerr << "running..." << endl;
 
   infile.open(path);
+  std::chrono::duration<double> diff;
+  auto  start=std::chrono::high_resolution_clock::now();
   while (infile >> t >> id >> size)
     {
       // start statistics after warm up
@@ -68,9 +71,16 @@ int main (int argc, char* argv[])
 	}
 
       // request
+   // auto  start=std::chrono::high_resolution_clock::now();
       webcache->request(id,size);
+ //   auto  end=std::chrono::high_resolution_clock::now();
+   //  diff= end- start;
+   // cout <<"diff"<<diff.count()<<endl;
     }
-
+   auto  end=std::chrono::high_resolution_clock::now();
+ diff =end -start;
+cout <<"diff "<<(double)diff.count()<<endl;
+ // std::chrono::duration<double> diff=end -start;
   infile.close();
   cout << "done." << endl << "-------" << endl
        << "cache policy: " << cacheType << endl
@@ -78,7 +88,9 @@ int main (int argc, char* argv[])
        << "additional parameters: " << paramSummary << endl
        << "requests processed: " << reqs << endl
        << "object hit ratio: " << double(webcache->getHits())/reqs << endl
-       << "byte hit ratio: " << double(webcache->getBytehits())/bytes << endl;
+       << "byte hit ratio: " << double(webcache->getBytehits())/bytes << endl
+       << "current cache size"<<webcache->getCurrentSize()<< endl
+       << "Throughput::"<<double(reqs/diff.count())<<"s\n" ;
 
   return 0;
 }

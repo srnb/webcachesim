@@ -5,7 +5,8 @@
 #include <random>
 #include <math.h>
 #include "cache.h"
-
+//#include "BloomFilter.h"
+#include "MurmurHash3.h"
 using namespace std;
 
 typedef list<object_t>::iterator list_iterator_t;
@@ -65,6 +66,7 @@ protected:
 
   virtual void miss(const long long cur_req, const long long size) {
     // object feasible to store?
+  // cerr<<"FIRST MISSS+16 "<<cur_req;
     if(size >= cache_size) {
       LOG("L",0,size,cache_size);
       return;
@@ -219,7 +221,8 @@ static Factory<S2LRUCache> factoryS2LRU("S2LRU");
 
 class FilterCache: public LRUCache {
 public:
-  FilterCache(): npar(2), LRUCache() {}
+  FilterCache(): npar(2),/*m_bits(2048),*/ LRUCache() { }
+                                
   ~FilterCache(){}
   
   virtual void setPar(string parName, string parValue) {
@@ -227,28 +230,86 @@ public:
       const long long n = stol(parValue);
       assert(n>0);
       npar = n;
+      //siz=32768;
+      cerr<<"BloomFilter updated \n";
     } else {
       cerr << "unrecognized parameter: " << parName << endl;
     }
   }
+std::array<uint64_t, 2> hashMur(const uint64_t * data , std::size_t len){
+	std::array<uint64_t, 2> hashValue;
+	MurmurHash3_x64_128(data, len , 3, hashValue.data());
+return hashValue;
+}
+inline uint64_t nthHash(uint8_t n,
+                        uint64_t hashA,
+                        uint64_t hashB,
+                        uint64_t filterSize) {
+    return (hashA +(unsigned)n * hashB) % filterSize;
+}
+
 
 protected:
   long long npar;
-  unordered_map<long long,long long> filter;
-
+  //unordered_map<long long,long long> filter;
+  //int siz;
+  std::array<uint16_t,67108864> m_bits;
+  uint8_t k_numHashes=32;
+  long long no_time_miss=0;
   virtual bool request (const long long cur_req, const long long size) {
-    filter[cur_req]++;
+   // filter[cur_req]++;
+     
+    uint64_t *data=(uint64_t *)&cur_req;
+    auto hashValues= hashMur(data,8);
+    for (int n = 1; n <=k_numHashes; n++) {
+        if(nthHash(n, hashValues[0], hashValues[1],m_bits.size())==6154){
+ // cerr<<"While REQ "<<cur_req<<" ";
+}
+         if(m_bits[nthHash(n, hashValues[0], hashValues[1],m_bits.size())]<=npar)   
+		 m_bits[nthHash(n, hashValues[0], hashValues[1],m_bits.size())]+=1;
+		
+	   }
     return(LRUCache::request(cur_req, size));
   }
-  
+   
   virtual void miss(const long long cur_req, const long long size) {
-    if(filter[cur_req]<=npar)
-      return ;
-    LRUCache::miss(cur_req, size);
+    //if(filter[cur_req]<=npar)
+     // return ;
+ 	bool bit_length=false;
+    bool bit_check=false;
+    uint64_t *data=(uint64_t *)&cur_req;
+     auto hashValues= hashMur(data,8);
+  	 for (int n = 1; n<=k_numHashes; n++){
+          if(cur_req==777){
+            cerr<<" pos"<<nthHash(n, hashValues[0], hashValues[1], m_bits.size())
+
+						<<"value" <<m_bits[nthHash(n, hashValues[0], hashValues[1], m_bits.size())]<<"\n";
+          }
+          
+  	      if(m_bits[nthHash(n, hashValues[0], hashValues[1], m_bits.size())]!=(npar+1)){
+           bit_length=true;
+            return; 
+          }
+        
+       }
+ 
+    if(!bit_length/*&&!bit_check*/){
+        if(cur_req==777){
+       no_time_miss++; 
+         cerr<<" times:::"<<no_time_miss<<"\n";}
+    	LRUCache::miss(cur_req, size);
+     }
+    else
+    	return;
   }
 };
-static Factory<FilterCache> factoryFilter("Filter");
 
+
+
+
+
+
+static Factory<FilterCache> factoryFilter("Filter");
 
 
 
