@@ -253,6 +253,7 @@ protected:
   long long npar;
   //unordered_map<long long,long long> filter;
   //int siz;
+  //Array size to construct different size bloom filter.
   std::array<uint16_t,67108864> m_bits;
   uint8_t k_numHashes=32;
   long long no_time_miss=0;
@@ -262,9 +263,9 @@ protected:
     uint64_t *data=(uint64_t *)&cur_req;
     auto hashValues= hashMur(data,8);
     for (int n = 1; n <=k_numHashes; n++) {
-        if(nthHash(n, hashValues[0], hashValues[1],m_bits.size())==6154){
+  /*      if(nthHash(n, hashValues[0], hashValues[1],m_bits.size())==6154){
  // cerr<<"While REQ "<<cur_req<<" ";
-}
+}*/
          if(m_bits[nthHash(n, hashValues[0], hashValues[1],m_bits.size())]<=npar)   
 		 m_bits[nthHash(n, hashValues[0], hashValues[1],m_bits.size())]+=1;
 		
@@ -280,11 +281,12 @@ protected:
     uint64_t *data=(uint64_t *)&cur_req;
      auto hashValues= hashMur(data,8);
   	 for (int n = 1; n<=k_numHashes; n++){
-          if(cur_req==777){
+/*         
+ if(cur_req==777){
             cerr<<" pos"<<nthHash(n, hashValues[0], hashValues[1], m_bits.size())
 
 						<<"value" <<m_bits[nthHash(n, hashValues[0], hashValues[1], m_bits.size())]<<"\n";
-          }
+          }*/
           
   	      if(m_bits[nthHash(n, hashValues[0], hashValues[1], m_bits.size())]!=(npar+1)){
            bit_length=true;
@@ -294,9 +296,9 @@ protected:
        }
  
     if(!bit_length/*&&!bit_check*/){
-        if(cur_req==777){
+      /*  if(cur_req==777){
        no_time_miss++; 
-         cerr<<" times:::"<<no_time_miss<<"\n";}
+         cerr<<" times:::"<<no_time_miss<<"\n";}*/
     	LRUCache::miss(cur_req, size);
      }
     else
